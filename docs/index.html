@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quadrant To-Do → Calendar Sync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1a1a; --paper:#faf8f4; --line:#e2ddd2;
+    --q1:#e74c3c; --q2:#f39c12; --q3:#f1c40f; --q4:#27ae60;
+    --muted:#6b6459;
+    --radius:0px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Inter',sans-serif; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:'JetBrains Mono',monospace}
+
+  /* ---- hero ---- */
+  header{padding:80px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+  h1{font-family:'Fraunces',serif;font-weight:900;font-size:clamp(38px,7vw,72px);
+    line-height:1.02;letter-spacing:-.02em;margin-bottom:22px}
+  h1 .arrow{color:var(--q1)}
+  .lede{font-size:19px;max-width:600px;color:#3a352d}
+  .lede b{font-weight:600}
+
+  /* ---- the signature: live matrix ---- */
+  .matrix{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:48px 0 8px;
+    border:3px solid var(--ink)}
+  .cell{padding:22px 20px;min-height:128px;position:relative;color:#fff}
+  .cell.q1{background:var(--q1)} .cell.q2{background:var(--q2)}
+  .cell.q3{background:var(--q3);color:#3a2f00} .cell.q4{background:var(--q4)}
+  .cell .qn{font-family:'JetBrains Mono',monospace;font-size:12px;opacity:.85;letter-spacing:.1em}
+  .cell .qt{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:2px 0 8px}
+  .cell .qd{font-size:13px;opacity:.92;font-family:'JetBrains Mono',monospace}
+  .axis-x{display:grid;grid-template-columns:1fr 1fr;gap:3px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-left:0}
+  .axis-x span{text-align:center}
+  .matrix-shell{position:relative}
+  .axis-y{position:absolute;left:-34px;top:0;height:100%;display:flex;
+    flex-direction:column;justify-content:space-around}
+  .axis-y span{writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted)}
+
+  /* ---- buttons ---- */
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:14px 24px;
+    font-weight:600;font-size:15px;text-decoration:none;border:2px solid var(--ink);
+    transition:transform .12s ease, background .12s ease}
+  .btn.primary{background:var(--ink);color:var(--paper)}
+  .btn.primary:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--q1)}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.ghost:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink)}
+
+  /* ---- sections ---- */
+  section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .sec-label{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(26px,4vw,38px);
+    letter-spacing:-.01em;margin-bottom:24px}
+  .steps{counter-reset:s;display:grid;gap:2px;border:1px solid var(--line)}
+  .step{display:grid;grid-template-columns:56px 1fr;background:#fff;
+    border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:0}
+  .step .num{counter-increment:s;background:var(--ink);color:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:14px}
+  .step .num::before{content:counter(s,decimal-leading-zero)}
+  .step .body{padding:18px 22px}
+  .step .body b{font-weight:600}
+  .step .body code{background:var(--paper);padding:1px 6px;font-size:13px;border:1px solid var(--line)}
+
+  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line)}
+  .feat{background:var(--paper);padding:24px}
+  .feat .k{font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:6px}
+  .feat .v{font-size:14px;color:var(--muted)}
+
+  .note{background:#fff;border-left:3px solid var(--q2);padding:18px 22px;
+    font-size:14.5px;color:#3a352d}
+  .note b{font-weight:600}
+
+  footer{padding:48px 0 64px;color:var(--muted);font-size:13px;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  footer a{color:var(--ink)}
+  @media (max-width:560px){
+    .axis-y{display:none}
+    .cell .qt{font-size:21px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">open source · google sheets + apps script · cc by-nc 4.0</div>
+    <h1>Sort your tasks.<br>Watch them land<br>on your calendar. <span class="arrow">→</span></h1>
+    <p class="lede">An <b>Eisenhower matrix</b> to-do board that syncs to <b>Google Calendar</b>,
+      color-coded by priority. No server, no install — it runs inside your own Google account.</p>
+
+    <div class="axis-x" style="margin-top:40px"><span>Urgent</span><span>Non-urgent</span></div>
+    <div class="matrix-shell">
+      <div class="axis-y"><span>Important</span><span>Not important</span></div>
+      <div class="matrix">
+        <div class="cell q1"><div class="qn">Q1</div><div class="qt">Crisis</div><div class="qd">urgent · important</div></div>
+        <div class="cell q2"><div class="qn">Q2</div><div class="qt">Goals &amp; Planning</div><div class="qd">non-urgent · important</div></div>
+        <div class="cell q3"><div class="qn">Q3</div><div class="qt">Interruptions</div><div class="qd">urgent · not important</div></div>
+        <div class="cell q4"><div class="qn">Q4</div><div class="qt">Distractions</div><div class="qd">non-urgent · not important</div></div>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <a class="btn primary" href="https://docs.google.com/spreadsheets/d/1klmst1yD4I0jHGO8sMrTaqVsrcWu05DN9i6MtIjdd5s/copy" id="copy-sheet">Copy the template sheet</a>
+      <a class="btn ghost" href="https://github.com/yuxaunlin1207/quadrant-todo">View on GitHub</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">what you get</div>
+    <h2>One board. Two views. Zero servers.</h2>
+    <div class="features">
+      <div class="feat"><div class="k">Dropdown quadrants</div><div class="v">Pick Q1–Q4; urgency, importance, and color fill in automatically.</div></div>
+      <div class="feat"><div class="k">Click to complete</div><div class="v">Tick Done — the row greys out and the calendar event is removed.</div></div>
+      <div class="feat"><div class="k">Live 2×2 board</div><div class="v">A formula-driven Board View renders the matrix in real time.</div></div>
+      <div class="feat"><div class="k">Color-matched sync</div><div class="v">Each task becomes a calendar event tinted by its quadrant.</div></div>
+      <div class="feat"><div class="k">Private by design</div><div class="v">Runs under each user's own Gmail. Nothing leaves your account.</div></div>
+      <div class="feat"><div class="k">Set-and-forget</div><div class="v">A 5-minute trigger keeps syncing even with every tab closed.</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">setup · about five minutes</div>
+    <h2>Get it running</h2>
+    <div class="steps">
+      <div class="step"><div class="num"></div><div class="body"><b>Copy the board.</b> Open the template sheet and choose <code>File ▸ Make a copy</code>.</div></div>
+      <div class="step"><div class="num"></div><div class="body"><b>Open the script editor.</b> In your copy: <code>Extensions ▸ Apps Script</code>. Delete the sample code.</div></div>
+      <div class="step"><div class="num"></div><div class="body"><b>Paste the sync script.</b> Copy <code>CalendarSync.gs</code> from the repo, paste, and save.</div></div>
+      <div class="step"><div class="num"></div><div class="body"><b>Authorize once.</b> Pick <code>syncToCalendar</code>, click <b>Run</b>, approve the calendar permission.</div></div>
+      <div class="step"><div class="num"></div><div class="body"><b>Turn on auto-sync.</b> <code>Triggers ▸ Add Trigger ▸ syncToCalendar ▸ Time-driven ▸ every 5 minutes</code>.</div></div>
+    </div>
+    <p style="margin-top:24px"><a class="btn ghost" href="SETUP.md">Read the full setup guide</a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">good to know</div>
+    <h2>How to live with it</h2>
+    <div class="note">
+      Add and edit tasks on the <b>Tasks</b> sheet only — leave the <b>Synced?</b> column blank;
+      the script stamps it for you. The Board View is a read-only mirror. To clear finished tasks,
+      tick <b>Done</b> rather than deleting rows, so each event stays matched to its task.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:12px">
+    <span>Built by Yuxuan Lin 林榆璇 · CC BY-NC 4.0</span>
+    <span><a href="https://github.com/yuxaunlin1207/quadrant-todo">GitHub</a> · <a href="SETUP.md">Setup</a> · <a href="https://docs.google.com/spreadsheets/d/1klmst1yD4I0jHGO8sMrTaqVsrcWu05DN9i6MtIjdd5s/copy">Template sheet</a></span>
+  </div>
+</footer>
+
+<script>
+  // The "Copy the template sheet" button opens a Google Sheets /copy link,
+  // which prompts each visitor to make their own copy.
+</script>
+</body>
+</html>
